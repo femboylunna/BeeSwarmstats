@@ -161,8 +161,8 @@
         </div>
     </div>
 
-    <!-- Direct hosted audio stream file that works flawlessly on mobile & web hosts -->
-    <audio id="audioPlayer" src="https://archive.org" preload="auto"></audio>
+    <!-- Points directly to your downloaded audio file -->
+    <audio id="audioPlayer" src="./music.mp3" preload="auto"></audio>
 
     <script>
         const clickScreen = document.getElementById('clickScreen');
@@ -186,15 +186,13 @@
         document.body.addEventListener('click', () => {
             if (virusBox.classList.contains('active')) return;
 
-            // Trigger full screen mode smoothly
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen();
             } else if (document.documentElement.webkitRequestFullscreen) {
                 document.documentElement.webkitRequestFullscreen();
             }
 
-            // Fire audio stream immediately
-            audioPlayer.play().catch(err => console.log("Audio block:", err));
+            audioPlayer.play().catch(err => console.log("Audio play blocked:", err));
 
             clickScreen.style.display = 'none';
             virusBox.classList.add('active');
