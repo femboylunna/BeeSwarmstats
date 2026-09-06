@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM_STATS.mp4</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #050505;
+            font-family: 'Courier New', Courier, monospace;
+            color: #ff3333;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .bg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .click-trigger-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #050505;
+            color: #ff3333;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .click-trigger-screen h1 {
+            font-size: 22px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: pulse 1.5s infinite;
+            line-height: 1.4;
+        }
+
+        .virus-box {
+            background-color: rgba(17, 17, 17, 0.95);
+            border: 2px solid #ff3333;
+            box-shadow: 0 0 40px rgba(255, 51, 51, 0.7);
+            padding: 30px 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            display: none;
+        }
+
+        .virus-box.active {
+            display: block;
+            animation: shake 0.12s infinite;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            color: #ff3333;
+            text-shadow: 2px 2px #00ffff;
+        }
+
+        .status {
+            color: #ffffff;
+            margin-bottom: 15px;
+            font-size: 13px;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .timer {
+            font-size: 54px;
+            font-weight: bold;
+            color: #ff3333;
+            margin: 15px 0;
+            text-shadow: 0 0 15px rgba(255, 51, 51, 0.8);
+        }
+
+        .terminal-logs {
+            background-color: #000;
+            border: 1px solid #ff3333;
+            padding: 10px;
+            height: 130px;
+            overflow-y: hidden;
+            text-align: left;
+            font-size: 12px;
+            color: #00ff00;
+            line-height: 1.6;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        @keyframes shake {
+            0% { transform: translate(2px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-overlay"></div>
+
+    <div class="click-trigger-screen" id="clickScreen">
+        <h1>[ CLICK HERE TO SEE STATS ]</h1>
+    </div>
+
+    <div class="virus-box" id="virusBox">
+        <div class="title">CYBERWARE BREACH</div>
+        <div class="status">OVERRIDING SYNAPTIC ACCELERATORS...</div>
+        
+        <div class="timer" id="countdown">20.00</div>
+
+        <div class="terminal-logs" id="logs">
+            [ICE] Initialising Cyberware exploit...<br>
+        </div>
+    </div>
+
+    <!-- Direct hosted audio stream file that works flawlessly on mobile & web hosts -->
+    <audio id="audioPlayer" src="https://archive.org" preload="auto"></audio>
+
+    <script>
+        const clickScreen = document.getElementById('clickScreen');
+        const virusBox = document.getElementById('virusBox');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const timerElement = document.getElementById('countdown');
+        const logsElement = document.getElementById('logs');
+        const statusElement = document.querySelector('.status');
+
+        let timeLeft = 20.00;
+        let logIndex = 0;
+
+        const mockLogs = [
+            "[ICE] Breaking Arasaka regional subnet...",
+            "[WARN] Cyberpsychosis limit warning bypassed...",
+            "[INFO] Connecting Sandevistan neural links...",
+            "[ERR] Synaptic burnout imminent...",
+            "[SYS] System overload: Grid shutdown complete."
+        ];
+
+        document.body.addEventListener('click', () => {
+            if (virusBox.classList.contains('active')) return;
+
+            // Trigger full screen mode smoothly
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+            }
+
+            // Fire audio stream immediately
+            audioPlayer.play().catch(err => console.log("Audio block:", err));
+
+            clickScreen.style.display = 'none';
+            virusBox.classList.add('active');
+
+            const interval = setInterval(() => {
+                timeLeft -= 0.01;
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    timerElement.innerText = "0.00";
+                    timerElement.style.color = "#00ff00";
+                    statusElement.innerText = "BREACH COMPLETE. SYSTEM RESET.";
+                    audioPlayer.pause(); 
+                    return;
+                }
+                
+                timerElement.innerText = timeLeft.toFixed(2);
+
+                if (Math.random() < 0.02 && logIndex < mockLogs.length) {
+                    logsElement.innerHTML += mockLogs[logIndex] + "<br>";
+                    logIndex++;
+                }
+            }, 10);
+        });
+    </script>
+
+</body>
+</html>
