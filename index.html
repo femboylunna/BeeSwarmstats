@@ -1,222 +1,417 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYSTEM_STATS.mp4</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+<meta charset="UTF-8">
+<title>SYSTEM // INFECTED</title>
+<style>
+  :root{
+    --grid-cols: 110;
+    --tint: 255, 40, 40;
+  }
+  html,body{
+    margin:0; padding:0; height:100%; background:#000; overflow:hidden;
+    font-family: 'Courier New', monospace;
+  }
+  #stage{
+    position:relative; width:100vw; height:100vh;
+    background:#000;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #ascii{
+    display:block;
+    white-space:pre;
+    font-family:'Consolas','Courier New',monospace;
+    line-height:1;
+    letter-spacing:0;
+    color: rgb(var(--tint));
+    text-shadow: 0 0 4px rgba(var(--tint),0.65);
+    background:#000;
+    user-select:none;
+    filter: contrast(1.05);
+  }
+  #video{ display:none; }
+  #uploadedImg{
+    position:fixed; top:-9999px; left:-9999px;
+    opacity:0.01; pointer-events:none;
+  }
+  canvas.hidden{ display:none; }
 
-        body {
-            background-color: #050505;
-            font-family: 'Courier New', Courier, monospace;
-            color: #ff3333;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            position: relative;
-            cursor: pointer;
-            -webkit-user-select: none;
-            user-select: none;
-        }
+  /* scanlines + vignette */
+  #overlay{
+    position:absolute; inset:0; pointer-events:none;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.0) 0px,
+        rgba(0,0,0,0.18) 1px,
+        rgba(0,0,0,0.0) 2px
+      );
+    mix-blend-mode:multiply;
+  }
+  #vignette{
+    position:absolute; inset:0; pointer-events:none;
+    box-shadow: inset 0 0 160px rgba(0,0,0,0.85);
+  }
 
-        .bg-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 4px, 3px 100%;
-            z-index: 1;
-            pointer-events: none;
-        }
+  /* top caption like the reference clip */
+  #caption{
+    position:absolute; top:4%; left:50%; transform:translateX(-50%);
+    color:#fff; font-family:Arial, sans-serif; font-weight:700;
+    font-size:clamp(20px,4vw,34px);
+    letter-spacing:0.5px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+    pointer-events:none;
+  }
 
-        .click-trigger-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: #050505;
-            color: #ff3333;
-            text-align: center;
-            padding: 20px;
-        }
+  /* glitch banner e.g. FIREWALL BREACHED */
+  #glitchBanner{
+    position:absolute; top:16%; left:50%; transform:translateX(-50%);
+    font-weight:700; font-size:clamp(14px,2.4vw,22px);
+    color:#ff2b2b; letter-spacing:2px;
+    text-shadow: 2px 0 #00eaff, -2px 0 #ff2b2b;
+    opacity:0; pointer-events:none;
+    font-family:'Consolas','Courier New',monospace;
+  }
+  #glitchBanner.show{
+    animation: flicker 1.4s steps(2,end) forwards;
+  }
+  @keyframes flicker{
+    0%{opacity:0; transform:translate(-50%,0) skewX(0deg);}
+    10%{opacity:1; transform:translate(calc(-50% + 3px),0) skewX(4deg);}
+    20%{opacity:0.2;}
+    30%{opacity:1; transform:translate(calc(-50% - 3px),0) skewX(-4deg);}
+    45%{opacity:1; transform:translate(-50%,0) skewX(0);}
+    70%{opacity:1;}
+    100%{opacity:0;}
+  }
 
-        .click-trigger-screen h1 {
-            font-size: 22px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            animation: pulse 1.5s infinite;
-            line-height: 1.4;
-        }
+  .hud-box{
+    position:absolute;
+    border:1px solid rgba(var(--tint),0.8);
+    background:rgba(10,0,0,0.35);
+    color:rgb(var(--tint));
+    font-size:11px;
+    line-height:1.4;
+    padding:6px 8px;
+    text-shadow:0 0 3px rgba(var(--tint),0.8);
+    pointer-events:none;
+    box-shadow:0 0 10px rgba(var(--tint),0.25);
+  }
+  #hudTop{ top:8%; right:3%; min-width:190px; }
+  #hudMid{ top:26%; right:3%; min-width:190px; }
+  #hudMem{ bottom:6%; right:3%; min-width:210px; font-size:10px; color:#e8d84a; border-color:rgba(232,216,74,0.8); text-shadow:0 0 3px rgba(232,216,74,0.7); background:rgba(20,18,0,0.35); }
+  .hud-label{ opacity:0.75; letter-spacing:1px; }
+  .bar{ letter-spacing:0px; }
 
-        .virus-box {
-            background-color: rgba(17, 17, 17, 0.95);
-            border: 2px solid #ff3333;
-            box-shadow: 0 0 40px rgba(255, 51, 51, 0.7);
-            padding: 30px 20px;
-            width: 90%;
-            max-width: 500px;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-            display: none;
-        }
+  #streaks{
+    position:absolute; inset:0; pointer-events:none; overflow:hidden;
+  }
+  .streak{
+    position:absolute; top:-20%; width:1px; height:18%;
+    background:linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.55), rgba(255,255,255,0));
+    animation-name: fall;
+    animation-timing-function:linear;
+    animation-iteration-count:infinite;
+  }
+  @keyframes fall{
+    0%{ transform:translateY(-20%); opacity:0; }
+    10%{ opacity:1; }
+    90%{ opacity:1; }
+    100%{ transform:translateY(650%); opacity:0; }
+  }
 
-        .virus-box.active {
-            display: block;
-            animation: shake 0.12s infinite;
-        }
+  #startMenu{
+    position:absolute; z-index:5; display:flex; flex-direction:column; gap:10px; align-items:center;
+  }
+  #startBtn, #uploadBtn{
+    padding:14px 22px; font-family:'Consolas',monospace;
+    background:#000; color:#ff2b2b; border:1px solid #ff2b2b; letter-spacing:2px;
+    cursor:pointer; font-size:14px; width:280px;
+  }
+  #startBtn:hover, #uploadBtn:hover{ background:#ff2b2b; color:#000; }
+  #fileInput{ display:none; }
+  #resetBtn{
+    position:absolute; z-index:6; top:2%; left:3%; padding:6px 10px;
+    font-family:'Consolas',monospace; background:#000; color:#888; border:1px solid #444;
+    letter-spacing:1px; cursor:pointer; font-size:10px; display:none;
+  }
+  #resetBtn:hover{ color:#fff; border-color:#888; }
 
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 15px;
-            color: #ff3333;
-            text-shadow: 2px 2px #00ffff;
-        }
-
-        .status {
-            color: #ffffff;
-            margin-bottom: 15px;
-            font-size: 13px;
-            letter-spacing: 1px;
-            font-weight: bold;
-        }
-
-        .timer {
-            font-size: 54px;
-            font-weight: bold;
-            color: #ff3333;
-            margin: 15px 0;
-            text-shadow: 0 0 15px rgba(255, 51, 51, 0.8);
-        }
-
-        .terminal-logs {
-            background-color: #000;
-            border: 1px solid #ff3333;
-            padding: 10px;
-            height: 130px;
-            overflow-y: hidden;
-            text-align: left;
-            font-size: 12px;
-            color: #00ff00;
-            line-height: 1.6;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 0.4; }
-            50% { opacity: 1; }
-            100% { opacity: 0.4; }
-        }
-
-        @keyframes shake {
-            0% { transform: translate(2px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(0px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(2px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(2px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-    </style>
+  #status{
+    position:absolute; bottom:2%; left:3%; color:#666; font-size:10px;
+    font-family:'Consolas',monospace; letter-spacing:1px; pointer-events:none;
+  }
+</style>
 </head>
 <body>
+<div id="stage">
+  <div id="startMenu">
+    <button id="startBtn">// ENABLE CAMERA TO INFECT //</button>
+    <button id="uploadBtn">// UPLOAD IMAGE / GIF / VIDEO //</button>
+    <input type="file" id="fileInput" accept="image/*,video/*">
+  </div>
+  <button id="resetBtn">// RESET //</button>
+  <pre id="ascii"></pre>
+  <div id="caption">virus getting worse</div>
+  <div id="glitchBanner">// FIREWALL BREACHED //</div>
 
-    <div class="bg-overlay"></div>
+  <div class="hud-box" id="hudTop">
+    <div class="hud-label">INTRUSION / REMOTE</div>
+    <div>SECTOR <span id="sectorId">0x0000</span></div>
+    <div class="bar" id="barTop">[##########..........]</div>
+    <div>STATUS: <span id="statusTop">SCANNING</span></div>
+  </div>
 
-    <div class="click-trigger-screen" id="clickScreen">
-        <h1>[ CLICK HERE TO SEE STATS ]</h1>
-    </div>
+  <div class="hud-box" id="hudMid">
+    <div class="hud-label">HOST CONTAINMENT</div>
+    <div>nodes online: <span id="nodesOnline">04</span></div>
+    <div>spread: <span class="bar" id="barMid">[####........]</span></div>
+  </div>
 
-    <div class="virus-box" id="virusBox">
-        <div class="title">CYBERWARE BREACH</div>
-        <div class="status">OVERRIDING SYNAPTIC ACCELERATORS...</div>
-        
-        <div class="timer" id="countdown">20.00</div>
+  <div class="hud-box" id="hudMem">
+    <div class="hud-label">RAW MEMORY</div>
+    <div id="memDump"></div>
+  </div>
 
-        <div class="terminal-logs" id="logs">
-            [ICE] Initialising Cyberware exploit...<br>
-        </div>
-    </div>
+  <div id="streaks"></div>
+  <div id="overlay"></div>
+  <div id="vignette"></div>
+  <div id="status">REC ● <span id="clock">00:00:00</span></div>
+</div>
 
-    <!-- Points directly to your downloaded audio file -->
-    <audio id="audioPlayer" src="./music.mp3" preload="auto"></audio>
+<video id="video" autoplay playsinline muted></video>
+<img id="uploadedImg">
+<canvas id="sampleCanvas" class="hidden"></canvas>
 
-    <script>
-        const clickScreen = document.getElementById('clickScreen');
-        const virusBox = document.getElementById('virusBox');
-        const audioPlayer = document.getElementById('audioPlayer');
-        const timerElement = document.getElementById('countdown');
-        const logsElement = document.getElementById('logs');
-        const statusElement = document.querySelector('.status');
+<script>
+const ASCII_CHARS = " .:-=+*#%@".split("");
+const cols = 100; // ascii grid width, height derived from aspect ratio
+const video = document.getElementById('video');
+const uploadedImg = document.getElementById('uploadedImg');
+const asciiEl = document.getElementById('ascii');
+const sampleCanvas = document.getElementById('sampleCanvas');
+const ctx = sampleCanvas.getContext('2d', { willReadFrequently:true });
+const startBtn = document.getElementById('startBtn');
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const startMenu = document.getElementById('startMenu');
+const resetBtn = document.getElementById('resetBtn');
 
-        let timeLeft = 20.00;
-        let logIndex = 0;
+let rows = 60;
+let running = false;
+let source = null;       // 'video' | 'image'
+let mirrorSource = true; // mirror selfie cams, not uploaded photos
 
-        const mockLogs = [
-            "[ICE] Breaking Arasaka regional subnet...",
-            "[WARN] Cyberpsychosis limit warning bypassed...",
-            "[INFO] Connecting Sandevistan neural links...",
-            "[ERR] Synaptic burnout imminent...",
-            "[SYS] System overload: Grid shutdown complete."
-        ];
+// ---- HUD randomized data ----
+function hex(len){
+  let s='';
+  const chars='0123456789ABCDEF';
+  for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function randomBar(width){
+  const filled = Math.floor(Math.random()*width);
+  return '['+'#'.repeat(filled)+'.'.repeat(width-filled)+']';
+}
+function updateHud(){
+  document.getElementById('sectorId').textContent = '0x'+hex(6);
+  document.getElementById('barTop').textContent = randomBar(20);
+  document.getElementById('barMid').textContent = randomBar(12);
+  document.getElementById('nodesOnline').textContent = String(Math.floor(Math.random()*20)).padStart(2,'0');
+  const statuses = ['SCANNING','COPYING','INFECTED','NO ESCAPE','SPREADING','LOCKED'];
+  document.getElementById('statusTop').textContent = statuses[Math.floor(Math.random()*statuses.length)];
 
-        document.body.addEventListener('click', () => {
-            if (virusBox.classList.contains('active')) return;
+  const memLines = [];
+  for(let i=0;i<4;i++){
+    memLines.push(hex(4)+': '+Array.from({length:6},()=>hex(2)).join(' '));
+  }
+  document.getElementById('memDump').innerHTML = memLines.join('<br>');
+}
+setInterval(updateHud, 350);
+updateHud();
 
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen();
-            } else if (document.documentElement.webkitRequestFullscreen) {
-                document.documentElement.webkitRequestFullscreen();
-            }
+// ---- glitch banner flashes ----
+const banners = ['// FIREWALL BREACHED //','// ACCESS DENIED //','// SYSTEM COMPROMISED //','// UPLOADING... //'];
+function flashBanner(){
+  const el = document.getElementById('glitchBanner');
+  el.textContent = banners[Math.floor(Math.random()*banners.length)];
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+setInterval(flashBanner, 4200);
 
-            audioPlayer.play().catch(err => console.log("Audio play blocked:", err));
+// ---- color tint cycling (red -> amber -> white) ----
+const palettes = [[255,40,40],[232,197,40],[220,220,220],[255,40,40]];
+let paletteT = 0;
+function tickPalette(){
+  paletteT += 0.004;
+  const n = palettes.length-1;
+  const pos = (paletteT % 1) * n;
+  const i = Math.floor(pos);
+  const f = pos - i;
+  const a = palettes[i], b = palettes[(i+1)%palettes.length];
+  const r = Math.round(a[0]+(b[0]-a[0])*f);
+  const g = Math.round(a[1]+(b[1]-a[1])*f);
+  const bl = Math.round(a[2]+(b[2]-a[2])*f);
+  document.documentElement.style.setProperty('--tint', `${r}, ${g}, ${bl}`);
+  requestAnimationFrame(tickPalette);
+}
+requestAnimationFrame(tickPalette);
 
-            clickScreen.style.display = 'none';
-            virusBox.classList.add('active');
+// ---- falling streak lines ----
+const streaksWrap = document.getElementById('streaks');
+for(let i=0;i<26;i++){
+  const s = document.createElement('div');
+  s.className='streak';
+  s.style.left = Math.random()*100+'%';
+  s.style.animationDuration = (2+Math.random()*3.5)+'s';
+  s.style.animationDelay = (Math.random()*4)+'s';
+  streaksWrap.appendChild(s);
+}
 
-            const interval = setInterval(() => {
-                timeLeft -= 0.01;
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    timerElement.innerText = "0.00";
-                    timerElement.style.color = "#00ff00";
-                    statusElement.innerText = "BREACH COMPLETE. SYSTEM RESET.";
-                    audioPlayer.pause(); 
-                    return;
-                }
-                
-                timerElement.innerText = timeLeft.toFixed(2);
+// ---- fake rec clock ----
+let secs=0;
+setInterval(()=>{
+  secs++;
+  const h=String(Math.floor(secs/3600)).padStart(2,'0');
+  const m=String(Math.floor((secs%3600)/60)).padStart(2,'0');
+  const s=String(secs%60).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+}, 1000);
 
-                if (Math.random() < 0.02 && logIndex < mockLogs.length) {
-                    logsElement.innerHTML += mockLogs[logIndex] + "<br>";
-                    logIndex++;
-                }
-            }, 10);
-        });
-    </script>
+// ---- webcam -> ascii ----
+async function startCamera(){
+  try{
+    video.pause();
+    video.removeAttribute('src');
+    video.srcObject = null;
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'user' }, audio:false });
+    video.srcObject = stream;
+    video.loop = false;
+    await video.play();
+    source = 'video';
+    mirrorSource = true;
+    beginRendering();
+  }catch(err){
+    startBtn.textContent = 'CAMERA BLOCKED — CHECK PERMISSIONS';
+  }
+}
+startBtn.addEventListener('click', startCamera);
 
+// ---- image/gif/video upload -> ascii ----
+uploadBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const isVideo = file.type.startsWith('video/');
+  const reader = new FileReader();
+  reader.onerror = ()=>{
+    asciiEl.textContent = 'ERROR READING FILE — try a different file.';
+  };
+  reader.onload = (ev)=>{
+    const dataUrl = ev.target.result;
+    if(isVideo){
+      // stop any live camera stream first
+      if(video.srcObject){
+        video.srcObject.getTracks().forEach(t=>t.stop());
+        video.srcObject = null;
+      }
+      video.pause();
+      video.loop = true;
+      video.muted = true;
+      video.onloadeddata = ()=>{
+        source = 'video';
+        mirrorSource = false;
+        video.play();
+        beginRendering();
+      };
+      video.onerror = ()=>{
+        asciiEl.textContent = 'ERROR DECODING VIDEO — try a different file (mp4/webm work best).';
+      };
+      video.src = dataUrl;
+    }else{
+      uploadedImg.onload = ()=>{
+        source = 'image';
+        mirrorSource = false;
+        beginRendering();
+      };
+      uploadedImg.onerror = ()=>{
+        asciiEl.textContent = 'ERROR DECODING IMAGE — try a different file.';
+      };
+      uploadedImg.src = dataUrl; // data: URL, avoids blob/tainted-canvas issues; also works for animated GIFs
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
+function beginRendering(){
+  startMenu.style.display='none';
+  resetBtn.style.display='block';
+  running = true;
+  requestAnimationFrame(renderLoop);
+}
+
+resetBtn.addEventListener('click', ()=>{
+  running = false;
+  source = null;
+  asciiEl.textContent = '';
+  if(video.srcObject){
+    video.srcObject.getTracks().forEach(t=>t.stop());
+    video.srcObject = null;
+  }
+  video.pause();
+  video.removeAttribute('src');
+  uploadedImg.src = '';
+  startMenu.style.display='flex';
+  resetBtn.style.display='none';
+  fileInput.value = '';
+});
+
+function renderLoop(){
+  if(!running) return;
+  const media = source === 'video' ? video : uploadedImg;
+  const mw = source === 'video' ? video.videoWidth : uploadedImg.naturalWidth;
+  const mh = source === 'video' ? video.videoHeight : uploadedImg.naturalHeight;
+
+  if(mw){
+    rows = Math.round(cols * (mh/mw) * 0.5); // 0.5 corrects for character aspect ratio
+    sampleCanvas.width = cols;
+    sampleCanvas.height = rows;
+    try{
+      ctx.save();
+      if(mirrorSource){
+        ctx.scale(-1,1);
+        ctx.drawImage(media, -cols, 0, cols, rows);
+      }else{
+        ctx.drawImage(media, 0, 0, cols, rows);
+      }
+      ctx.restore();
+
+      const frame = ctx.getImageData(0,0,cols,rows).data;
+      let out = '';
+      for(let y=0;y<rows;y++){
+        for(let x=0;x<cols;x++){
+          const idx = (y*cols+x)*4;
+          const r=frame[idx], g=frame[idx+1], b=frame[idx+2];
+          let bright = (0.299*r+0.587*g+0.114*b)/255;
+          // add flicker noise for that infected static feel
+          bright = Math.min(1, Math.max(0, bright + (Math.random()-0.5)*0.06));
+          const charIdx = Math.floor(bright * (ASCII_CHARS.length-1));
+          out += ASCII_CHARS[charIdx];
+        }
+        out += '\n';
+      }
+      asciiEl.textContent = out;
+      asciiEl.style.fontSize = Math.max(4, Math.min(9, (window.innerWidth/cols)*1.05)) + 'px';
+    }catch(err){
+      asciiEl.textContent = 'RENDER ERROR: '+err.message+'\n(try opening this file directly in a browser tab instead of a preview pane)';
+      running = false;
+      return;
+    }
+  }
+  requestAnimationFrame(renderLoop);
+}
+</script>
 </body>
 </html>
